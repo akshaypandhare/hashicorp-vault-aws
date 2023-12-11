@@ -15,3 +15,8 @@ server:
 ui:
   enabled: true
   serviceType: LoadBalancer
+
+
+# Whats Vault namespace
+
+In HashiCorp Vault, namespaces provide a way to logically partition and isolate Vault environments within a single Vault cluster. Namespaces allow multiple tenants or teams to use the same Vault instance while maintaining separation and control over their data, policies, and configurations.
