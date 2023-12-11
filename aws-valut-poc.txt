@@ -20,3 +20,23 @@ ui:
 # Whats Vault namespace
 
 In HashiCorp Vault, namespaces provide a way to logically partition and isolate Vault environments within a single Vault cluster. Namespaces allow multiple tenants or teams to use the same Vault instance while maintaining separation and control over their data, policies, and configurations.
+
+# Modes in Vault server
+
+Developement mode which is recommend for lower environemnts and where data is stored in memory of the server.
+Production mode where data is stored in external destination like disks or databases.
+
+# Write a secret in Vault using key value pair.
+
+When you store secrets in Vault you store those in specific path i.e path/secret and then we write key value pair secret in the path.
+So before you create the secret in specific path first of all you need to enable that path in secret engine. Below command helps us to enable the path in the secret enginer.
+
+vault secrets list
+vault secrets enable -path=akshay kv
+
+Once the path is enabled you can store the key value pair secret in above enabled path.
+
+vault kv put akshay/secret name=akshay
+vault kv get akshay/secret
+vault kv get -format=json akshay/secret
+vault kv delete akshay/secret
