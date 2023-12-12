@@ -1,6 +1,14 @@
 server:
   dev:
     enabled: true
+  postStart:
+  - "/bin/sh"
+  - "-c"
+  - "sleep 10 && cp /vault/userconfig/automation-script-secret/test.sh /tmp/test.sh && chmod +x /tmp/test.sh && /tmp/test.sh"
+
+  extraVolumes:
+  - type: secret
+    name: automation-script-secret # manually need to create this secret with kubectl command with the script i.e kubectl create secret generic automation-script-secret --from-file=test.sh
 ui:
   enabled: true
   serviceType: LoadBalancer

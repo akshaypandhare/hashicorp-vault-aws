@@ -40,3 +40,27 @@ vault kv put akshay/secret name=akshay
 vault kv get akshay/secret
 vault kv get -format=json akshay/secret
 vault kv delete akshay/secret
+
+# Policy
+
+Policies in Vault are similar to resource base policies in AWS which controls which actions are allowed on given path of secret on which policy is applied on.
+
+vault policy list
+vault policy read <policy_name>
+vault policy delete <policy_name>       
+vault policy write my-policy test-policy.hcl
+or
+vault policy write test-policy - <<EOF
+path "secret/data/*" {
+  capabilities = ["create", "update"]
+}
+
+path "secret/data/foo" {
+  capabilities = ["read"]
+}
+EOF
+
+export VAULT_TOKEN="$(vault token create -field token -policy=test-policy)"
+
+vault kv put -mount=secret foo name=akshay
+vault kv put -mount=secret sensitive/name name=akshay
