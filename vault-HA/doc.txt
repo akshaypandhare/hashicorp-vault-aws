@@ -1,0 +1,4 @@
+# Installing vault in HA mode
+
+updated EKS nodegroup to 3 nodes
+we have already added CSI driver Addon now we need to add IAM permission to nodegroup IAM role to create EBS volumes for our PV. For time being I have added admin IAM access to node IAM role

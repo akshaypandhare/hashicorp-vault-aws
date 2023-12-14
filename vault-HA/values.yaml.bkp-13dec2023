@@ -1,0 +1,67 @@
+# Vault Helm Chart Value Overrides
+global:
+  enabled: true
+
+injector:
+  enabled: true
+
+server:
+  dataStorage:
+    enabled: true
+    size: 4Gi
+    mountPath: "/vault/data"
+    storageClass: null
+    accessMode: ReadWriteOnce
+    annotations: {}
+
+  extraSecretEnvironmentVars:
+    - envName: AWS_ACCESS_KEY_ID
+      secretName: kms-creds
+      secretKey: AWS_ACCESS_KEY_ID
+    - envName: AWS_SECRET_ACCESS_KEY
+      secretName: kms-creds
+      secretKey: AWS_SECRET_ACCESS_KEY
+    - envName: AWS_SESSION_TOKEN
+      secretName: kms-creds
+      secretKey: AWS_SESSION_TOKEN
+
+  ha:
+    enabled: true
+    replicas: 3
+
+    raft:
+      enabled: true
+      setNodeId: false
+      config: |
+        ui = true
+
+        listener "tcp" {
+          tls_disable = 1
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+        }
+        
+        storage "raft" {
+          path = "/vault/data"
+
+          retry_join {
+          leader_api_addr = "http://vault-0.vault-internal:8200"
+          }
+          retry_join {
+          leader_api_addr = "http://vault-1.vault-internal:8200"
+          }
+          retry_join {
+          leader_api_addr = "http://vault-2.vault-internal:8200"
+          }
+        }
+
+        service_registration "kubernetes" {}
+
+        seal "awskms" {
+          region     = "ap-southeast-1"
+          kms_key_id = "143fbf94-8e51-4292-a3c9-114cd75e16b8"
+        }
+
+ui:
+  enabled: true
+  serviceType: "LoadBalancer"
