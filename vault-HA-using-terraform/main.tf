@@ -191,3 +191,18 @@ resource "helm_release" "example_chart" {
 
   namespace = "default"
 }
+
+
+
+# testing
+
+
+resource "vault_policy" "example_policy" {
+  name   = "my-policy"                      
+  policy = <<EOT
+    # Example Vault policy
+    path "secret/data/my-secret" {
+      capabilities = ["read"]
+    }
+  EOT
+}

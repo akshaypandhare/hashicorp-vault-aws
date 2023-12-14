@@ -15,9 +15,9 @@ variable "vault_automation_script_path" {
 }
 
 variable "aws_creds_secret" {
-    type = string
+  type = string
 }
 
 variable "region" {
-    type = string
+  type = string
 }
