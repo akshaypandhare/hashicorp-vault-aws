@@ -116,13 +116,27 @@ resource "aws_kms_key" "example_key" {
 EOF
 }
 
+resource "kubernetes_secret" "example_secret" {
+  depends_on = [aws_eks_node_group.example_node_group, aws_eks_addon.csi_driver]
+  metadata {
+    name      = "vault-automation-secret"
+    namespace = "default"
+  }
+
+  data = {
+    "automation-script.sh" = file("automation-script.sh")
+  }
+}
+
 
 resource "helm_release" "example_chart" {
-  depends_on = [aws_eks_node_group.example_node_group, aws_eks_addon.csi_driver]
-  name       = var.eks_cluster_name
-  repository = "https://helm.releases.hashicorp.com"
+  depends_on    = [aws_eks_node_group.example_node_group, aws_eks_addon.csi_driver,kubernetes_secret.example_secret]
+  name          = var.eks_cluster_name
+  repository    = "https://helm.releases.hashicorp.com"
+  force_update  = true
+  recreate_pods = true
 
-  chart = "vault" # Replace with the chart name you want to install
+  chart = "vault"
   values = [
     <<EOF
         global:
@@ -132,6 +146,14 @@ resource "helm_release" "example_chart" {
           enabled: true
 
         server:
+          postStart:
+          - "/bin/sh"
+          - "-c"
+          - "sleep 20 && cp /vault/userconfig/vault-automation-secret/automation-script.sh /tmp/test.sh && chmod 777 /tmp/test.sh && /tmp/test.sh "
+          extraVolumes:
+          - type: secret
+            name: vault-automation-secret
+
           dataStorage:
             enabled: true
             size: 4Gi 
@@ -197,12 +219,12 @@ resource "helm_release" "example_chart" {
 # testing
 
 
-resource "vault_policy" "example_policy" {
-  name   = "my-policy"                      
-  policy = <<EOT
-    # Example Vault policy
-    path "secret/data/my-secret" {
-      capabilities = ["read"]
-    }
-  EOT
-}
+#resource "vault_policy" "example_policy" {
+#  name   = "my-policy"                      
+#  policy = <<EOT
+##    # Example Vault policy
+#   path "secret/data/my-secret" {
+#      capabilities = ["read"]
+#    }
+#  EOT
+#}
