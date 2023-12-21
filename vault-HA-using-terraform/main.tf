@@ -40,9 +40,9 @@ resource "aws_eks_node_group" "example_node_group" {
   subnet_ids      = var.subnet_ids
 
   scaling_config {
-    desired_size = 3
-    max_size     = 3
-    min_size     = 3
+    desired_size = 0
+    max_size     = 1
+    min_size     = 0
   }
 
   tags = {
@@ -119,7 +119,7 @@ EOF
 resource "kubernetes_secret" "example_secret" {
   depends_on = [aws_eks_node_group.example_node_group, aws_eks_addon.csi_driver]
   metadata {
-    name      = "vault-automation-secret"
+    name      = var.vault_automation_secret
     namespace = "default"
   }
 
@@ -128,9 +128,23 @@ resource "kubernetes_secret" "example_secret" {
   }
 }
 
+resource "kubernetes_secret" "aws_creds" {
+  depends_on = [aws_eks_node_group.example_node_group, aws_eks_addon.csi_driver]
+  metadata {
+    name      = var.aws_creds_secret
+    namespace = "default"
+  }
+
+  data = {
+    AWS_ACCESS_KEY_ID: "ASIA2BSCFRMZDHU4RQLY"
+    AWS_SECRET_ACCESS_KEY: "G5reE0kc3O0qESpi3ZH4sjZP8HnLWoMbJH90GW84"
+    AWS_SESSION_TOKEN: "IQoJb3JpZ2luX2VjEG0aCXVzLWVhc3QtMSJHMEUCIQCDaRs452oKAoxcCCPbJ/YveBt0oQCfKsKOqV/1VnNmZwIgCWwCYfHwSzNmYkDK4UBrMh1ktCSQPmAEo3/vyYS6igwqmwMI5v//////////ARAAGgw2OTA1NTQ3NjgxNzgiDKA3mQttth6ksl1K2irvAuVMEPFhILQFnFWnfFtUCoRYeKB4ittNTQi+O+qWTZG6u6qDlJF+2ZQh1mxuIjjRm7PBwdgAxZP4MfCPEx9XHzrunpT/VFETfa+K2ohacBC8wCqlOr0TI1d7CKBJ2oAXcJV/xr0EQlnLC6eVZhV7TbWfaFO5mXSvYXRkmFatVt0eHA7feS2z05IcERfuJWIEfFLu5xJK9aVfYqPHQ0SqKpyAoXdDG1kw2Na1D25oON4ijd1Wv2Wx+rfR7kvFNGEYkxzBI0ce250eHU7CL+jKcgxsbk5MASVSMdRMAJFDB6PeUAz8d6SDVgMkVfzyvLbS+ZwszGNIeG+HnCmqmgtBoDRnK0a8iJeewWI+egIa+BV3oUkwzlcOH9cdol8fdMcbCszoA/IQcftr5bFzxPjGqeBsvootHNtdmAwkWWgByey8TFEqWh34/nGj2G4+a/kQx/bVRrr2s7IIefh0fHlPlk6aA557S2dbXZMUt1vP7pkw+NiJrAY6pgEHyiebFaUk6CQgrgkWCVNZRfHoLF0iqy0AKjILmIufRScoeg5VP+woZLt48CpqD0uKMfQTsDc5O6e65Hg+yVhpLko7sSg4B5UrxbiuAcPNnT0KqFdUucKlJg3ZaVSMhYV5Kq1PoEkNSdHn8cqKzZIsAiL2xU9dImZm2o2PjReg1Bo65t72eTEoTFiG9Fad+O2BHpvYNOgslc3CbrYuJ8RJ+r7i0SgI"
+  }
+}
+
 
 resource "helm_release" "example_chart" {
-  depends_on    = [aws_eks_node_group.example_node_group, aws_eks_addon.csi_driver,kubernetes_secret.example_secret]
+  depends_on    = [aws_eks_node_group.example_node_group, aws_eks_addon.csi_driver,kubernetes_secret.example_secret, kubernetes_secret.aws_creds]
   name          = var.eks_cluster_name
   repository    = "https://helm.releases.hashicorp.com"
   force_update  = true
@@ -146,13 +160,14 @@ resource "helm_release" "example_chart" {
           enabled: true
 
         server:
+
           postStart:
           - "/bin/sh"
           - "-c"
-          - "sleep 20 && cp /vault/userconfig/vault-automation-secret/automation-script.sh /tmp/test.sh && chmod 777 /tmp/test.sh && /tmp/test.sh "
+          - "sleep 20 && cp /vault/userconfig/${var.vault_automation_secret}/automation-script.sh /tmp/test.sh && chmod 777 /tmp/test.sh && /tmp/test.sh "
           extraVolumes:
           - type: secret
-            name: vault-automation-secret
+            name: ${var.vault_automation_secret}
 
           dataStorage:
             enabled: true

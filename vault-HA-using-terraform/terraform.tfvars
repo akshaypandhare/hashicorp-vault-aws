@@ -4,3 +4,4 @@ subnet_ids                   = ["subnet-08177c87a562bbcd6", "subnet-09d19c5fa927
 vault_automation_script_path = "test.sh"
 aws_creds_secret             = "kms-creds"
 region                       = "ap-southeast-1"
+vault_automation_secret      = "vault-automation-secret"

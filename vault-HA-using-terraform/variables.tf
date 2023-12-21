@@ -18,6 +18,10 @@ variable "aws_creds_secret" {
   type = string
 }
 
+variable "vault_automation_secret" {
+  type = string
+}
+
 variable "region" {
   type = string
 }
