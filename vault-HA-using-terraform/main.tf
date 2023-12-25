@@ -40,9 +40,9 @@ resource "aws_eks_node_group" "example_node_group" {
   subnet_ids      = var.subnet_ids
 
   scaling_config {
-    desired_size = 0
-    max_size     = 1
-    min_size     = 0
+    desired_size = 3
+    max_size     = 3
+    min_size     = 3
   }
 
   tags = {
@@ -95,7 +95,7 @@ resource "aws_iam_role_policy_attachment" "policy_nodegroup_4" {
 # AWS KMS key
 
 resource "aws_kms_key" "example_key" {
-  description             = "${var.eks_cluster_name}-vault-key"
+  description             = "${var.eks_cluster_name}-vault-key" # env
   deletion_window_in_days = 7
 
   policy = <<EOF
@@ -136,9 +136,9 @@ resource "kubernetes_secret" "aws_creds" {
   }
 
   data = {
-    AWS_ACCESS_KEY_ID: "ASIA2BSCFRMZDHU4RQLY"
-    AWS_SECRET_ACCESS_KEY: "G5reE0kc3O0qESpi3ZH4sjZP8HnLWoMbJH90GW84"
-    AWS_SESSION_TOKEN: "IQoJb3JpZ2luX2VjEG0aCXVzLWVhc3QtMSJHMEUCIQCDaRs452oKAoxcCCPbJ/YveBt0oQCfKsKOqV/1VnNmZwIgCWwCYfHwSzNmYkDK4UBrMh1ktCSQPmAEo3/vyYS6igwqmwMI5v//////////ARAAGgw2OTA1NTQ3NjgxNzgiDKA3mQttth6ksl1K2irvAuVMEPFhILQFnFWnfFtUCoRYeKB4ittNTQi+O+qWTZG6u6qDlJF+2ZQh1mxuIjjRm7PBwdgAxZP4MfCPEx9XHzrunpT/VFETfa+K2ohacBC8wCqlOr0TI1d7CKBJ2oAXcJV/xr0EQlnLC6eVZhV7TbWfaFO5mXSvYXRkmFatVt0eHA7feS2z05IcERfuJWIEfFLu5xJK9aVfYqPHQ0SqKpyAoXdDG1kw2Na1D25oON4ijd1Wv2Wx+rfR7kvFNGEYkxzBI0ce250eHU7CL+jKcgxsbk5MASVSMdRMAJFDB6PeUAz8d6SDVgMkVfzyvLbS+ZwszGNIeG+HnCmqmgtBoDRnK0a8iJeewWI+egIa+BV3oUkwzlcOH9cdol8fdMcbCszoA/IQcftr5bFzxPjGqeBsvootHNtdmAwkWWgByey8TFEqWh34/nGj2G4+a/kQx/bVRrr2s7IIefh0fHlPlk6aA557S2dbXZMUt1vP7pkw+NiJrAY6pgEHyiebFaUk6CQgrgkWCVNZRfHoLF0iqy0AKjILmIufRScoeg5VP+woZLt48CpqD0uKMfQTsDc5O6e65Hg+yVhpLko7sSg4B5UrxbiuAcPNnT0KqFdUucKlJg3ZaVSMhYV5Kq1PoEkNSdHn8cqKzZIsAiL2xU9dImZm2o2PjReg1Bo65t72eTEoTFiG9Fad+O2BHpvYNOgslc3CbrYuJ8RJ+r7i0SgI"
+    AWS_ACCESS_KEY_ID: "ASIA2BSCFRMZDWV47M5P"
+    AWS_SECRET_ACCESS_KEY: "voqo4b0y3v5dq3xdwr6eUl4/gG+R4jSshvwKbyIX"
+    AWS_SESSION_TOKEN: "IQoJb3JpZ2luX2VjEJz//////////wEaCXVzLWVhc3QtMSJHMEUCIBhD1keLzPlRhoGbWBiKq+itaSvZk6OxWVmdpP/uQiJ3AiEAw86gaOJ4sEBGo4rUMLWcuth1IUXDiNPzskgyNwtAynwqkgMIJRAAGgw2OTA1NTQ3NjgxNzgiDDkuMhOGDnqUPzfNjyrvAil/NtOvxdKOVQ72yDenvZ3vJY6FjCX1m+YGpvLcCn5BXN5ApXI2asd8u3SG5SwPvbhXFFFF6h2z9VQ0GqPWcgQ2L+WYqSVqrzNBphheMivS1mw+4cfTvjirvJaoCnPVqPYTr7y5WJ5eEYpCAgMG5jhPLXMXjElckP7BEhY103RIX1X2k+ZoCOsAnVpH22YL3mhWhL3YLPS0TefPC8woOPdPbSU4kG8dis6q6MWDSvLIesHTmV1um5lHJ7mYC+Arg8R4hxRaoq8ogJRnce2rbJgY1BLYVCY7yynum6SdQhUObrlhwmTh1QXJmMVBtF0Zuboq5zvQ8Xe9a8SW0q8HxRQUbgt4PM+gcoHlTwqdtfCTGKF0Q27b/l5t0f0k/IxovzUh6gpipNNFrujMbjvKjhTlZW/HyHmSF8NN6jDZiSo0w/E69Vatp/9AEm0REmPgGOc9tj6SE1edo9xLOH8pNcojl6aCce4UPKebiYi8ZMowo5CUrAY6pgHzsL3tyV2wIzINmnokk8CiLSLFJFMxfwnNerfq66vFAZ87AitVUBQXwRDqP3A6V9+JjYSHQbfdqfSHy60EIOld9qQwDIvlw7JwU4VonxnDAoBIkXGBgOqXnjJn11q55yEC4Cmfn0Jvkk4weFGeePKSAFtb6PtE3wBDhPi+PiKLWAzRAeZRM6vQ1Ka31kMMEPDU7Dqz1RgX5mg24iM38tewXsnC/e4/"
   }
 }
 

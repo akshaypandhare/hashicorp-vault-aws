@@ -1,5 +1,5 @@
 #!/bin/sh
-export VAULT_TOKEN="hvs.Eo0y023L2bcUk1d2U0PFHMEE"
+export VAULT_TOKEN="hvs.EzQ5DNPoYx3jLX6zSX4BzKLR"
 
 vault policy write test-policy - <<EOF
     path "secret/data/*" {
