@@ -1,7 +1,7 @@
 # Create an EKS cluster
 resource "aws_eks_cluster" "vault_cluster" {
   name     = "${var.eks_cluster_name}-${var.env}"
-  role_arn = aws_iam_role.eks_role.arn
+  role_arn = data.aws_iam_role.cluster-role.arn
 
   vpc_config {
     subnet_ids = data.aws_subnets.example.ids
@@ -10,27 +10,20 @@ resource "aws_eks_cluster" "vault_cluster" {
   tags = var.tags
 }
 
-# Create an IAM role for EKS service
-resource "aws_iam_role" "eks_role" {
-  name = "${var.eks_cluster_name}-${var.env}-cluster-role"
+# Add EKS OIDC as identity provider in AWS IAM
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "eks.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
+resource "aws_iam_openid_connect_provider" "example" {
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.example.certificates.0.sha1_fingerprint]
+  url             = aws_eks_cluster.vault_cluster.identity.0.oidc.0.issuer
 }
 
 # install CSI driver add_on in EKS cluster
 
 resource "aws_eks_addon" "csi_driver" {
+  depends_on    = [aws_eks_node_group.vault_node_group]
   cluster_name  = aws_eks_cluster.vault_cluster.name
-  addon_name    = "${var.eks_cluster_name}-${var.env}-addon"
+  addon_name    = "aws-ebs-csi-driver"
   addon_version = var.ebs_addon_version
   tags          = var.tags
 }
@@ -39,7 +32,7 @@ resource "aws_eks_addon" "csi_driver" {
 resource "aws_eks_node_group" "vault_node_group" {
   cluster_name    = aws_eks_cluster.vault_cluster.name
   node_group_name = "${var.eks_cluster_name}-${var.env}-nodegroup"
-  node_role_arn   = aws_iam_role.eks_node_role.arn
+  node_role_arn   = data.aws_iam_role.nodegroup-role.arn
   subnet_ids      = data.aws_subnets.example.ids
 
   scaling_config {
@@ -49,48 +42,6 @@ resource "aws_eks_node_group" "vault_node_group" {
   }
 
   tags = var.tags
-}
-
-# Create an IAM role for EKS node group
-resource "aws_iam_role" "eks_node_role" {
-  name = "${var.eks_cluster_name}-${var.env}-nodegroup-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-# Attaching an AWS managed policy to the IAM role
-resource "aws_iam_role_policy_attachment" "policy_cluster" {
-  role       = aws_iam_role.eks_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "policy_nodegroup_1" {
-  role       = aws_iam_role.eks_node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-}
-
-resource "aws_iam_role_policy_attachment" "policy_nodegroup_2" {
-  role       = aws_iam_role.eks_node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-}
-
-resource "aws_iam_role_policy_attachment" "policy_nodegroup_3" {
-  role       = aws_iam_role.eks_node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-}
-
-resource "aws_iam_role_policy_attachment" "policy_nodegroup_4" {
-  role       = aws_iam_role.eks_node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
 # AWS KMS key
@@ -113,25 +64,57 @@ resource "kubernetes_secret" "vault_secret" {
   }
 }
 
-resource "kubernetes_secret" "aws_creds" {
-  depends_on = [aws_eks_node_group.vault_node_group, aws_eks_addon.csi_driver]
-  metadata {
-    name      = "kms-creds"
-    namespace = "default"
-  }
+# Create an IAM role which would be assume by vault serviceaccount
 
-  data = {
-    AWS_ACCESS_KEY_ID : "ASIA2BSCFRMZDWV47M5P"
-    AWS_SECRET_ACCESS_KEY : "voqo4b0y3v5dq3xdwr6eUl4/gG+R4jSshvwKbyIX"
-    AWS_SESSION_TOKEN : "IQoJb3JpZ2luX2VjEJz//////////wEaCXVzLWVhc3QtMSJHMEUCIBhD1keLzPlRhoGbWBiKq+itaSvZk6OxWVmdpP/uQiJ3AiEAw86gaOJ4sEBGo4rUMLWcuth1IUXDiNPzskgyNwtAynwqkgMIJRAAGgw2OTA1NTQ3NjgxNzgiDDkuMhOGDnqUPzfNjyrvAil/NtOvxdKOVQ72yDenvZ3vJY6FjCX1m+YGpvLcCn5BXN5ApXI2asd8u3SG5SwPvbhXFFFF6h2z9VQ0GqPWcgQ2L+WYqSVqrzNBphheMivS1mw+4cfTvjirvJaoCnPVqPYTr7y5WJ5eEYpCAgMG5jhPLXMXjElckP7BEhY103RIX1X2k+ZoCOsAnVpH22YL3mhWhL3YLPS0TefPC8woOPdPbSU4kG8dis6q6MWDSvLIesHTmV1um5lHJ7mYC+Arg8R4hxRaoq8ogJRnce2rbJgY1BLYVCY7yynum6SdQhUObrlhwmTh1QXJmMVBtF0Zuboq5zvQ8Xe9a8SW0q8HxRQUbgt4PM+gcoHlTwqdtfCTGKF0Q27b/l5t0f0k/IxovzUh6gpipNNFrujMbjvKjhTlZW/HyHmSF8NN6jDZiSo0w/E69Vatp/9AEm0REmPgGOc9tj6SE1edo9xLOH8pNcojl6aCce4UPKebiYi8ZMowo5CUrAY6pgHzsL3tyV2wIzINmnokk8CiLSLFJFMxfwnNerfq66vFAZ87AitVUBQXwRDqP3A6V9+JjYSHQbfdqfSHy60EIOld9qQwDIvlw7JwU4VonxnDAoBIkXGBgOqXnjJn11q55yEC4Cmfn0Jvkk4weFGeePKSAFtb6PtE3wBDhPi+PiKLWAzRAeZRM6vQ1Ka31kMMEPDU7Dqz1RgX5mg24iM38tewXsnC/e4/"
+resource "aws_iam_role" "vault_service_account_role" {
+  name = "${var.eks_cluster_name}-${var.env}-vault-sa-role"
+  tags = var.tags
+  assume_role_policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Principal" : {
+          "Federated" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.oidc_provider_url}"
+        },
+        "Action" : "sts:AssumeRoleWithWebIdentity",
+        "Condition" : {
+          "StringEquals" : {
+            "${local.oidc_provider_url}:aud" : "sts.amazonaws.com",
+            "${local.oidc_provider_url}:sub" : "system:serviceaccount:default:vault-service-account"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# Above IAM role IAM policy
+
+resource "aws_iam_role_policy_attachment" "vault_sa_role_policy" {
+  role       = aws_iam_role.vault_service_account_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+# Vault serviceAccount which will assume above IAM role
+
+resource "kubernetes_service_account" "vault_sa" {
+  metadata {
+    name      = "vault-service-account"
+    namespace = "default"
+    annotations = {
+      "eks.amazonaws.com/role-arn" = "${aws_iam_role.vault_service_account_role.arn}"
+    }
   }
 }
 
+# vault helm chart
 
 resource "helm_release" "vault_chart" {
-  depends_on    = [aws_eks_node_group.vault_node_group, aws_eks_addon.csi_driver, kubernetes_secret.vault_secret, kubernetes_secret.aws_creds]
+  depends_on    = [aws_eks_node_group.vault_node_group, aws_eks_addon.csi_driver, kubernetes_secret.vault_secret]
   name          = "${var.eks_cluster_name}-${var.env}"
   repository    = "https://helm.releases.hashicorp.com"
+  version       = var.vault_helm_chart_version
   force_update  = true
   recreate_pods = true
 
@@ -146,28 +129,20 @@ resource "helm_release" "vault_chart" {
 
         server:
 
+          serviceAccount:
+            create: false
+            name: ${kubernetes_service_account.vault_sa.metadata[0].name}
           dataStorage:
             enabled: true
-            size: 4Gi 
-            mountPath: "/vault/data"
+            size: "${var.vault_storage_size}"
+            mountPath: "${var.vault_storage_path}"
             storageClass: null
             accessMode: ReadWriteOnce
             annotations: {}
 
-          extraSecretEnvironmentVars:
-            - envName: AWS_ACCESS_KEY_ID
-              secretName: kms-creds
-              secretKey: AWS_ACCESS_KEY_ID
-            - envName: AWS_SECRET_ACCESS_KEY
-              secretName: kms-creds
-              secretKey: AWS_SECRET_ACCESS_KEY
-            - envName: AWS_SESSION_TOKEN
-              secretName: kms-creds
-              secretKey: AWS_SESSION_TOKEN
-
           ha:
             enabled: true
-            replicas: 3
+            replicas: ${var.vault_replicas}
 
             raft:
               enabled: true
@@ -182,7 +157,7 @@ resource "helm_release" "vault_chart" {
                 }
                 
                 storage "raft" {
-                path = "/vault/data"
+                path = "${var.vault_storage_path}"
 
                 retry_join {
                     auto_join        = "provider=k8s namespace=default label_selector=\"app.kubernetes.io/instance=${var.eks_cluster_name}-${var.env},component=server\""
@@ -205,3 +180,15 @@ resource "helm_release" "vault_chart" {
 
   namespace = "default"
 }
+
+# vault provider example
+
+#resource "vault_policy" "example_policy" {
+#  name   = "vault-test-policy"                      
+#  policy = <<EOT
+#  # Example Vault policy
+#   path "secret/data/my-secret" {
+#      capabilities = ["read"]
+#    }
+#  EOT
+#}

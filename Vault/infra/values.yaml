@@ -1,0 +1,61 @@
+server:
+  dev:
+    enabled: true
+  readinessProbe:
+    enabled: true
+    # If you need to use a http path instead of the default exec
+    # path: /v1/sys/health?standbyok=true
+
+    # Port number on which readinessProbe will be checked.
+    port: 8888
+    # When a probe fails, Kubernetes will try failureThreshold times before giving up
+    failureThreshold: 2
+    # Number of seconds after the container has started before probe initiates
+    initialDelaySeconds: 5
+    # How often (in seconds) to perform the probe
+    periodSeconds: 5
+    # Minimum consecutive successes for the probe to be considered successful after having failed
+    successThreshold: 1
+    # Number of seconds after which the probe times out.
+    timeoutSeconds: 3
+  livenessProbe:
+    enabled: false
+    # Used to define a liveness exec command. If provided, exec is preferred to httpGet (path) as the livenessProbe handler.
+    execCommand: []
+    # - /bin/sh
+    # - -c
+    # - /vault/userconfig/mylivenessscript/run.sh
+    # Path for the livenessProbe to use httpGet as the livenessProbe handler
+    path: "/v1/sys/health?standbyok=true"
+    # Port number on which livenessProbe will be checked if httpGet is used as the livenessProbe handler
+    port: 8888
+    # When a probe fails, Kubernetes will try failureThreshold times before giving up
+    failureThreshold: 2
+    # Number of seconds after the container has started before probe initiates
+    initialDelaySeconds: 60
+    # How often (in seconds) to perform the probe
+    periodSeconds: 5
+    # Minimum consecutive successes for the probe to be considered successful after having failed
+    successThreshold: 1
+    # Number of seconds after which the probe times out.
+    timeoutSeconds: 3
+  networkPolicy:
+    enabled: false
+    egress: []
+    ingress:
+      - from:
+        - namespaceSelector: {}
+        ports:
+        - port: 8888
+          protocol: TCP
+        - port: 8877
+          protocol: TCP
+  service:
+    port: 8888
+    # Target port to which the service should be mapped to
+    targetPort: 8888
+ui:
+  enabled: true
+  serviceType: LoadBalancer
+  externalPort: 8888
+  targetPort: 8888
