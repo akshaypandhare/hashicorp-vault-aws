@@ -122,3 +122,31 @@ terraform apply
 ```
 
 ### Once pods are up and running then exec in to the pod and verify if the required vault resources are crated by the script or not also if pods are failing check the logs of the pod.
+
+### Update the terraform configuration for automatically creating vault resource using vault provider and postStart script.
+
+### Once we initialised the vault we need to update the terraform code as below. But before that update the root token in postStart script. Update the terraform code of vault helm chart as below.
+
+```hcl
+postStart:
+          - "/bin/sh"
+          - "-c"
+          - "sleep 20 && cp /vault/userconfig/vault-automation-secret/automation-script.sh /tmp/test.sh && chmod 777 /tmp/test.sh && /tmp/test.sh "
+          extraVolumes:
+          - type: secret
+            name: vault-automation-secret
+```
+
+### Update the main.tf in terraform configuration as below which uses vault provider to create the vault resources after initialisation of the vault.
+
+```hcl
+resource "vault_policy" "example_policy" {
+  name   = "vault-test-policy"                      
+  policy = <<EOT
+  # Example Vault policy
+   path "secret/data/my-secret" {
+      capabilities = ["read"]
+    }
+  EOT
+}
+```
