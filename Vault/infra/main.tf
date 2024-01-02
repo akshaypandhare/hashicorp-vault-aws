@@ -10,6 +10,15 @@ resource "aws_eks_cluster" "vault_cluster" {
   tags = var.tags
 }
 
+# Run aws commands to access the eks cluster as we need to deploy helm chart using k8s provider.
+
+resource "null_resource" "local" {
+  depends_on = [aws_eks_cluster.vault_cluster,aws_eks_node_group.vault_node_group]
+  provisioner "local-exec" {
+    command = "aws eks update-kubeconfig --region ${var.region} --name ${var.eks_cluster_name}-${var.env}"
+  }
+}
+
 # Add EKS OIDC as identity provider in AWS IAM
 
 resource "aws_iam_openid_connect_provider" "example" {
@@ -53,7 +62,7 @@ resource "aws_kms_key" "vault_unseal_key" {
 }
 
 resource "kubernetes_secret" "vault_secret" {
-  depends_on = [aws_eks_node_group.vault_node_group, aws_eks_addon.csi_driver]
+  depends_on = [aws_eks_node_group.vault_node_group, aws_eks_addon.csi_driver, null_resource.local]
   metadata {
     name      = "vault-automation-secret"
     namespace = "default"
@@ -99,6 +108,7 @@ resource "aws_iam_role_policy_attachment" "vault_sa_role_policy" {
 # Vault serviceAccount which will assume above IAM role
 
 resource "kubernetes_service_account" "vault_sa" {
+  depends_on = [aws_eks_node_group.vault_node_group, aws_eks_addon.csi_driver, null_resource.local]
   metadata {
     name      = "vault-service-account"
     namespace = "default"
@@ -111,7 +121,7 @@ resource "kubernetes_service_account" "vault_sa" {
 # vault helm chart
 
 resource "helm_release" "vault_chart" {
-  depends_on    = [aws_eks_node_group.vault_node_group, aws_eks_addon.csi_driver, kubernetes_secret.vault_secret]
+  depends_on    = [aws_eks_node_group.vault_node_group, aws_eks_addon.csi_driver, kubernetes_secret.vault_secret, null_resource.local]
   name          = "${var.eks_cluster_name}-${var.env}"
   repository    = "https://helm.releases.hashicorp.com"
   version       = var.vault_helm_chart_version
